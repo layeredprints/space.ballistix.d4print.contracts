@@ -1,5 +1,3 @@
-pragma solidity ^0.4.0;
-
 pragma solidity ^0.4.18;
 
 
@@ -192,14 +190,13 @@ contract Secured {
   }
 
   address public origin;
-  address public usersAddress;
 
+  // Reference to the users contract
   Users public users;
 
   constructor (address addr) public {
-    usersAddress = addr;
     origin = msg.sender;
-    users = Users (usersAddress);
+    users = Users (addr);
   }
 
 
@@ -209,8 +206,7 @@ contract Secured {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateUsersContractReference (address addr) restrict public {
-    usersAddress = addr;
-    users = Users (usersAddress);
+    users = Users (addr);
   }
 }
 
@@ -219,6 +215,22 @@ contract Secured {
 /*-------------------------------------------------------------------------------*/
 
 // debug and testing stuff
+
+contract Referencee {
+
+}
+
+contract Referencer {
+
+  Referencee public referencee;
+
+  address public referenceeContract;
+
+  constructor (address addr) public {
+    referenceeContract = addr;
+    referencee = Referencee (referenceeContract);
+  }
+}
 
 contract TestModifiers {
 
@@ -274,6 +286,13 @@ contract Test2 is Delegate {
 /*-------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------*/
 
+/**
+ * Funds contract that manages the service funds for all users
+ *
+ * funds can be deposited, withdrawn and reserved
+ *
+ **/
+
 contract Funds is Delegate, Secured {
 
   // Mapping for the balance of each account within the Funds wallet
@@ -281,9 +300,6 @@ contract Funds is Delegate, Secured {
 
   // Mapping for the funds in reservation
   mapping (address => uint) reservations;
-
-  // address public owner = msg.sender;
-  address public itemsContract;
 
   constructor (address origin, address usersContractAddres) public Delegate(origin) Secured(usersContractAddres) {
     // do other stuff
@@ -294,17 +310,11 @@ contract Funds is Delegate, Secured {
   // Contract functions
   // ---
 
-  // Set the address for the items contract for interaction
-  function init (address addr) restrictToCreators public {
-    itemsContract = addr;
-  }
 
 
   // ---
   // Direct Service functions (called by users directly)
   // ---
-
-  // todo: add restrictToPermitted where appropriate, and update logic accordingly (or offer alternative functions)
 
   // Allow the owner to fill the contract buffer
   function fillBuffer (uint amount) isAdmin(msg.sender) public payable {
@@ -372,6 +382,7 @@ contract Funds is Delegate, Secured {
     }
   }
 
+
   // ---
   // Delegate Service functions (called by other contracts)
   // ---
@@ -419,13 +430,19 @@ contract Funds is Delegate, Secured {
 /*-------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------*/
 
+/**
+ * Items contract that manages the service items for all users
+ *
+ * items can be ordered, cancelled, fetched, etc
+ *
+ * when ordering an item or items, this contract interacts with the Funds contract to reserve the necessary funds
+ *
+ **/
+
 contract Items is Delegate, Secured {
 
   // Reference to the funds contract
   Funds public funds;
-
-  // Reference to the Funds contract address
-  address public fundsAddress;
 
   // Mapping for the balance of each account within the Funds wallet
   mapping (address => uint[]) items;
@@ -441,8 +458,7 @@ contract Items is Delegate, Secured {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateFundsContractReference (address addr) restrict public {
-    fundsAddress = addr;
-    funds = Funds (fundsAddress);
+    funds = Funds (addr);
   }
 
 
@@ -475,13 +491,19 @@ contract Items is Delegate, Secured {
 /*-------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------*/
 
+/**
+ * Auctions contract that manages the service auctions for all users
+ *
+ * auctions can be created, cancelled, ended, etc
+ *
+ * when providers bid on an auction, this contract interacts with the Funds contract to reserve the necessary funds
+ *
+ **/
+
 contract Auctions is Delegate, Secured {
 
   // Reference to the funds contract
   Funds public funds;
-
-  // Reference to the Funds contract address
-  address public fundsAddress;
 
   uint public zehVar;
 
@@ -495,14 +517,22 @@ contract Auctions is Delegate, Secured {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateFundsContractReference (address addr) restrict public {
-    fundsAddress = addr;
-    funds = Funds (fundsAddress);
+    funds = Funds (addr);
   }
 }
 
 /*-------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------*/
+
+/**
+ * Users contract that manages the service roles and access verification for all users
+ *
+ * admins, providers and customers can be added, removed and verified
+ *
+ * this contract is wrapped by the Secure contract to offer role checking modifiers to the extending contracts (Funds, Items and Auctions)
+ *
+ **/
 
 contract Users is Delegate {
 
@@ -607,14 +637,17 @@ contract Users is Delegate {
 /*-------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------*/
 
-// this is more of a debugging contract, but we could potentially use it as a managing contract
-contract Factory is Owned {
+/**
+ * Factory contract that manages the chain of contracts and their interdependence
+ *
+ * Users, Funds, Items and Auctions contracts can be interacted with
+ * References to those contracts can be updated, both within the contract and in the contracts that depend on the updated information
+ *
+ * this contract is more of an easy debugging contract, but can be extended to a proper proxy chain managing contract
+ *
+ **/
 
-  // Contract addresses
-  address public contractUsers;
-  address public contractFunds;
-  address public contractItems;
-  address public contractAuctions;
+contract Factory is Owned {
 
   // Contract references
   Users private users;
@@ -622,37 +655,32 @@ contract Factory is Owned {
   Items private items;
   Auctions private auctions;
 
-  // note: contract address and reference are actually the same thing, but they differ in use, it's good to have a copy of both
 
   constructor() public Owned(msg.sender) {
     // Create the users contract, reference us and the factory as owners
     users = new Users(msg.sender);
-    contractUsers = users;
 
     // Create the funds contract, reference us and the factory as owners, reference the users contract for access management
-    funds = new Funds(msg.sender, contractUsers);
-    contractFunds = funds;
+    funds = new Funds(msg.sender, users);
 
     // Create the items contract, reference us and the factory as owners
     // Reference the users contract for access management
     // Reference the funds contract for fund management
-    items = new Items(msg.sender, contractUsers, contractFunds);
-    contractItems = items;
+    items = new Items(msg.sender, users, funds);
 
     // Create the auctions contract, reference us and the factory as owners
     // Reference the users contract for access management
     // Reference the funds contract for fund management
-    auctions = new Auctions(msg.sender, contractUsers, contractFunds);
-    contractAuctions = auctions;
+    auctions = new Auctions(msg.sender, users, funds);
 
     // Add Funds, Items and Auctions to the permitted callers of the Users contract
-    users.addPermittedCaller(contractFunds);
-    users.addPermittedCaller(contractItems);
-    users.addPermittedCaller(contractAuctions);
+    users.addPermittedCaller(funds);
+    users.addPermittedCaller(items);
+    users.addPermittedCaller(auctions);
 
     // Add Items and Auctions to the permitted callers of the Funds contract
-    funds.addPermittedCaller(contractItems);
-    funds.addPermittedCaller(contractAuctions);
+    funds.addPermittedCaller(items);
+    funds.addPermittedCaller(auctions);
   }
 
   function testCall () restrictToOwner public {
@@ -663,23 +691,21 @@ contract Factory is Owned {
   function updateUsersReference (address newAddr) restrictToOwner public {
     // Update the local reference and pointer
     users = new Users(newAddr);
-    contractUsers = users;
 
     // Update the individual contract's references
-    funds.updateUsersContractReference(contractUsers);
-    items.updateUsersContractReference(contractUsers);
-    auctions.updateUsersContractReference(contractUsers);
+    funds.updateUsersContractReference(users);
+    items.updateUsersContractReference(users);
+    auctions.updateUsersContractReference(users);
   }
 
   // Update the funds contract reference for the linked contracts
   function updateFundsReference (address newAddr) restrictToOwner public {
     // Update the local reference and pointer
-    funds = new Funds(newAddr, contractUsers);
-    contractFunds = funds;
+    funds = new Funds(newAddr, users);
 
     // Update the individual contract's references
-    items.updateFundsContractReference(contractFunds);
-    auctions.updateFundsContractReference(contractFunds);
+    items.updateFundsContractReference(funds);
+    auctions.updateFundsContractReference(funds);
   }
 
 }
