@@ -6,14 +6,17 @@ import "./Funds.sol";
 import "./Items.sol";
 import "./Auctions.sol";
 
-// this is more of a debugging contract, but we could potentially use it as a managing contract
-contract Factory is Owned {
+/**
+ * Factory contract that manages the chain of contracts and their interdependence
+ *
+ * Users, Funds, Items and Auctions contracts can be interacted with
+ * References to those contracts can be updated, both within the contract and in the contracts that depend on the updated information
+ *
+ * this contract is more of an easy debugging contract, but can be extended to a proper proxy chain managing contract
+ *
+ **/
 
-  // Contract addresses
-  address public contractUsers;
-  address public contractFunds;
-  address public contractItems;
-  address public contractAuctions;
+contract Factory is Owned {
 
   // Contract references
   Users private users;
@@ -21,37 +24,32 @@ contract Factory is Owned {
   Items private items;
   Auctions private auctions;
 
-  // note: contract address and reference are actually the same thing, but they differ in use, it's good to have a copy of both
 
   constructor() public Owned(msg.sender) {
     // Create the users contract, reference us and the factory as owners
     users = new Users(msg.sender);
-    contractUsers = users;
 
     // Create the funds contract, reference us and the factory as owners, reference the users contract for access management
-    funds = new Funds(msg.sender, contractUsers);
-    contractFunds = funds;
+    funds = new Funds(msg.sender, users);
 
     // Create the items contract, reference us and the factory as owners
     // Reference the users contract for access management
     // Reference the funds contract for fund management
-    items = new Items(msg.sender, contractUsers, contractFunds);
-    contractItems = items;
+    items = new Items(msg.sender, users, funds);
 
     // Create the auctions contract, reference us and the factory as owners
     // Reference the users contract for access management
     // Reference the funds contract for fund management
-    auctions = new Auctions(msg.sender, contractUsers, contractFunds);
-    contractAuctions = auctions;
+    auctions = new Auctions(msg.sender, users, funds);
 
     // Add Funds, Items and Auctions to the permitted callers of the Users contract
-    users.addPermittedCaller(contractFunds);
-    users.addPermittedCaller(contractItems);
-    users.addPermittedCaller(contractAuctions);
+    users.addPermittedCaller(funds);
+    users.addPermittedCaller(items);
+    users.addPermittedCaller(auctions);
 
     // Add Items and Auctions to the permitted callers of the Funds contract
-    funds.addPermittedCaller(contractItems);
-    funds.addPermittedCaller(contractAuctions);
+    funds.addPermittedCaller(items);
+    funds.addPermittedCaller(auctions);
   }
 
   function testCall () restrictToOwner public {
@@ -62,23 +60,21 @@ contract Factory is Owned {
   function updateUsersReference (address newAddr) restrictToOwner public {
     // Update the local reference and pointer
     users = new Users(newAddr);
-    contractUsers = users;
 
     // Update the individual contract's references
-    funds.updateUsersContractReference(contractUsers);
-    items.updateUsersContractReference(contractUsers);
-    auctions.updateUsersContractReference(contractUsers);
+    funds.updateUsersContractReference(users);
+    items.updateUsersContractReference(users);
+    auctions.updateUsersContractReference(users);
   }
 
   // Update the funds contract reference for the linked contracts
   function updateFundsReference (address newAddr) restrictToOwner public {
     // Update the local reference and pointer
-    funds = new Funds(newAddr, contractUsers);
-    contractFunds = funds;
+    funds = new Funds(newAddr, users);
 
     // Update the individual contract's references
-    items.updateFundsContractReference(contractFunds);
-    auctions.updateFundsContractReference(contractFunds);
+    items.updateFundsContractReference(funds);
+    auctions.updateFundsContractReference(funds);
   }
 
 }

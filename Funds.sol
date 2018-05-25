@@ -3,6 +3,13 @@ pragma solidity ^0.4.18;
 import "./Delegate.sol";
 import "./Secured.sol";
 
+/**
+ * Funds contract that manages the service funds for all users
+ *
+ * funds can be deposited, withdrawn and reserved
+ *
+ **/
+
 contract Funds is Delegate, Secured {
 
   // Mapping for the balance of each account within the Funds wallet
@@ -10,9 +17,6 @@ contract Funds is Delegate, Secured {
 
   // Mapping for the funds in reservation
   mapping (address => uint) reservations;
-
-  // address public owner = msg.sender;
-  address public itemsContract;
 
   constructor (address origin, address usersContractAddres) public Delegate(origin) Secured(usersContractAddres) {
     // do other stuff
@@ -23,17 +27,11 @@ contract Funds is Delegate, Secured {
   // Contract functions
   // ---
 
-  // Set the address for the items contract for interaction
-  function init (address addr) restrictToCreators public {
-    itemsContract = addr;
-  }
 
 
   // ---
   // Direct Service functions (called by users directly)
   // ---
-
-  // todo: add restrictToPermitted where appropriate, and update logic accordingly (or offer alternative functions)
 
   // Allow the owner to fill the contract buffer
   function fillBuffer (uint amount) isAdmin(msg.sender) public payable {
@@ -100,6 +98,7 @@ contract Funds is Delegate, Secured {
       revert();
     }
   }
+
 
   // ---
   // Delegate Service functions (called by other contracts)

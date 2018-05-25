@@ -49,14 +49,13 @@ contract Secured {
   }
 
   address public origin;
-  address public usersAddress;
 
+  // Reference to the users contract
   Users public users;
 
   constructor (address addr) public {
-    usersAddress = addr;
     origin = msg.sender;
-    users = Users (usersAddress);
+    users = Users (addr);
   }
 
 
@@ -66,7 +65,6 @@ contract Secured {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateUsersContractReference (address addr) restrict public {
-    usersAddress = addr;
-    users = Users (usersAddress);
+    users = Users (addr);
   }
 }

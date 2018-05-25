@@ -2,6 +2,15 @@ pragma solidity ^0.4.18;
 
 import "./Delegate.sol";
 
+/**
+ * Users contract that manages the service roles and access verification for all users
+ *
+ * admins, providers and customers can be added, removed and verified
+ *
+ * this contract is wrapped by the Secure contract to offer role checking modifiers to the extending contracts (Funds, Items and Auctions)
+ *
+ **/
+
 contract Users is Delegate {
 
   // Mapping for address admin role

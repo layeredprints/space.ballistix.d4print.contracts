@@ -4,13 +4,19 @@ import "./Delegate.sol";
 import "./Secured.sol";
 import "./Funds.sol";
 
+/**
+ * Items contract that manages the service items for all users
+ *
+ * items can be ordered, cancelled, fetched, etc
+ *
+ * when ordering an item or items, this contract interacts with the Funds contract to reserve the necessary funds
+ *
+ **/
+
 contract Items is Delegate, Secured {
 
   // Reference to the funds contract
   Funds public funds;
-
-  // Reference to the Funds contract address
-  address public fundsAddress;
 
   // Mapping for the balance of each account within the Funds wallet
   mapping (address => uint[]) items;
@@ -26,8 +32,7 @@ contract Items is Delegate, Secured {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateFundsContractReference (address addr) restrict public {
-    fundsAddress = addr;
-    funds = Funds (fundsAddress);
+    funds = Funds (addr);
   }
 
 
