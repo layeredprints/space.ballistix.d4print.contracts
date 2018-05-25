@@ -1,6 +1,17 @@
 pragma solidity ^0.4.18;
 
-
+/**
+ * You can paste this into Remix at http://remix.ethereum.org to test the contracts
+ *
+ * Deploy individually, or deploy the Factory contract
+ *
+ * Contracts can be added by reference by selecting the correct contract type
+ * and pasting the reference address in the "Load contract from Address" under deploy
+ *
+ * It's best to turn off Auto compile to keep the page reactive
+ *
+ *
+ **/
 
 /*-------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------*/
