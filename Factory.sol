@@ -14,6 +14,9 @@ import "./Auctions.sol";
  *
  * this contract is more of an easy debugging contract, but can be extended to a proper proxy chain managing contract
  *
+ * note: be sure to provide enough gas when deploying this contract, it invokes a lot of other code and runs out pretty quick
+ * the overall cost once deployed is fairly reasonable
+ *
  **/
 
 contract Factory is Owned {
