@@ -55,9 +55,10 @@ contract Factory is Owned {
     funds.addPermittedCaller(auctions);
   }
 
-  function testCall () restrictToOwner public {
-    auctions.test(5);
-  }
+
+  // ---
+  // Contract functions
+  // ---
 
   // Update the users contract reference for the linked contracts
   function updateUsersReference (address newAddr) restrictToOwner public {
@@ -80,4 +81,27 @@ contract Factory is Owned {
     auctions.updateFundsContractReference(funds);
   }
 
+  function getUsersReference() view restrictToOwner public returns (Users) {
+    return users;
+  }
+
+  function getFundsReference() view restrictToOwner public returns (Funds) {
+    return funds;
+  }
+
+  function getItemsReference() view restrictToOwner public returns (Items) {
+    return items;
+  }
+
+  function getAuctionsReference() view restrictToOwner public returns (Auctions) {
+    return auctions;
+  }
+
+  // ---
+  // Service functions
+  // ---
+
+  function testCall () restrictToOwner public {
+    auctions.test(5);
+  }
 }
