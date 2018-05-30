@@ -40,7 +40,11 @@ contract Owned {
   address public owner;
 
   constructor (address addr) public {
-    owner = addr;
+    if (addr != address(0)) {
+      owner = addr;
+    } else {
+      revert();
+    }
   }
 
 }
@@ -93,7 +97,11 @@ contract FactoryOwned is Owned {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateFactory (address addr) restrictToCreators public {
-    factory = addr;
+    if (addr != address(0)) {
+      factory = addr;
+    } else {
+      revert();
+    }
   }
 
 }
@@ -132,9 +140,13 @@ contract Delegate is FactoryOwned {
   mapping (address => bool) permittedCallers;
 
   constructor (address origin) public FactoryOwned(origin) {
-    // Add the origin and caller as permitted callers
-    addPermittedCaller(msg.sender);
-    addPermittedCaller(origin);
+    if (origin != address(0)) {
+      // Add the origin and caller as permitted callers
+      addPermittedCaller(msg.sender);
+      addPermittedCaller(origin);
+    } else {
+      revert();
+    }
   }
 
   // ---
@@ -143,12 +155,20 @@ contract Delegate is FactoryOwned {
 
   // Add an address as a permitted caller
   function addPermittedCaller (address addr) restrictToCreators public {
-    permittedCallers[addr] = true;
+    if (addr != address(0)) {
+      permittedCallers[addr] = true;
+    } else {
+      revert();
+    }
   }
 
   // Remove an address from permitted callers
   function removePermittedCaller (address addr) restrictToCreators public {
-    permittedCallers[addr] = false;
+    if (addr != address(0)) {
+      permittedCallers[addr] = false;
+    } else {
+      revert();
+    }
   }
 }
 
@@ -209,8 +229,12 @@ contract Secured {
 
   // Initialize the reference to the used contract and assign the caller as the origin
   constructor (address addr) public {
-    origin = msg.sender;
-    users = Users (addr);
+    if (addr != address(0)) {
+      origin = msg.sender;
+      users = Users (addr);
+    } else {
+      revert();
+    }
   }
 
 
@@ -220,7 +244,11 @@ contract Secured {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateUsersContractReference (address addr) restrict public {
-    users = Users (addr);
+    if (addr != address(0)) {
+      users = Users (addr);
+    } else {
+      revert();
+    }
   }
 }
 
@@ -416,6 +444,21 @@ contract Funds is Delegate, Secured {
     }
   }
 
+  // Allow admin to transfer reserves
+  // NOTE: this transfers from source RESERVE to owner BALANCE, not owner RESERVE
+  function transferReserve (uint amount, address source) restrictToPermitted public {
+    // Check if the source has that amount or more in reservations
+    if (reservations[source] >= amount) {
+      // Subtract the amount from the reservations of the source
+      reservations[source] -= amount;
+      // Add that amount to the balance of the destination
+      balances[owner] += amount;
+    } else {
+      // If failed, revert
+      revert();
+    }
+  }
+
   // Allow admin to pay out from admin account
   function transferOwnerFunds (uint amount, address destination) restrictToPermitted public {
     // Check if the source has that amount or more in balance
@@ -461,6 +504,9 @@ contract Items is Delegate, Secured {
   // Reference to the funds contract
   Funds public funds;
 
+  // Reference to the auctions contract
+  Auctions public auctions;
+
   // Mapping of user's item id lists
   mapping (address => uint[]) items;
 
@@ -470,8 +516,9 @@ contract Items is Delegate, Secured {
   // Map users to the indexes of their items
   mapping (address => mapping (uint => uint)) itemReferences;
 
-  constructor (address origin, address usersContractAddres, address fundsContractAddress) public Delegate(origin) Secured(usersContractAddres) {
+  constructor (address origin, address usersContractAddres, address fundsContractAddress, address auctionsContractAddress) public Delegate(origin) Secured(usersContractAddres) {
     updateFundsContractReference(fundsContractAddress);
+    updateAuctionsContractReference(auctionsContractAddress);
   }
 
 
@@ -479,11 +526,23 @@ contract Items is Delegate, Secured {
   // Contract functions
   // ---
 
-  // Allow for updating the owning (factory) contract, since it may change
+  // Allow for updating the funds contract reference, since it may change
   function updateFundsContractReference (address addr) restrict public {
-    funds = Funds (addr);
+    if (addr != address(0)) {
+      funds = Funds (addr);
+    } else {
+      revert();
+    }
   }
 
+  // Allow for updating the auctions contract reference, since it may change
+  function updateAuctionsContractReference (address addr) restrict public {
+    if (addr != address(0)) {
+      auctions = Auctions (addr);
+    } else {
+      revert();
+    }
+  }
 
   // --
   // Service functions
@@ -524,9 +583,9 @@ contract Items is Delegate, Secured {
 
   // Allow user to confirm item
   function confirmItem (uint itemId, uint auctionId) isCustomer(msg.sender) public {
-    uint itemIndex itemReferences[msg.sender][itemId];
+    uint itemIndex = itemReferences[msg.sender][itemId];
     itemStructs[msg.sender][itemIndex].confirmed = true;
-    //   funds.payoutPart(auctionId);
+    auctions.payoutPart(auctionId);
     // todo: this should trigger some event or action that transfers
     // a percentage of the batch cost to the provider that ... provided it
   }
@@ -595,7 +654,11 @@ contract Auctions is Delegate, Secured {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateFundsContractReference (address addr) restrict public {
-    funds = Funds (addr);
+    if (addr != address(0)) {
+      funds = Funds (addr);
+    } else {
+      revert();
+    }
   }
 
 
@@ -606,13 +669,13 @@ contract Auctions is Delegate, Secured {
   // Allow administrators to start an auction
   function addAuction (uint auctionId, uint itemCount) isAdmin(msg.sender) public {
     ongoing[auctionId] = true;
-    Auction memory auc ({
-  id: auctionId,
-  itemCount: itemCount,
-  winner: address(0),
-  partsPayed: 0;
-  });
-    auctionsData[auctionId].push(auction);
+    Auction memory auc = Auction ({
+      id: auctionId,
+      itemCount: itemCount,
+      winner: address(0),
+      partsPayed: 0
+      });
+    auctionsData[auctionId] = auc;
   }
 
   // Allow administrators to end an auction todo: this does not perform the needed logic
@@ -622,11 +685,11 @@ contract Auctions is Delegate, Secured {
 
   // Allow admin to get winner for an auction
   // note: if this gets an auctionid that is invalid, it will likely return null, that's expected behaviour it think
-  function getWinner (uint auctionId) view isAdmin(msg.sender) public returns (address) {
+  function getWinner (uint auctionId) isAdmin(msg.sender) public returns (address) {
 
     // return the winner if we already calculated it
-    if (auctionsData[auctionIdn].winner != address(0)) {
-      return auctionsData[auctionIdn].winner;
+    if (auctionsData[auctionId].winner != address(0)) {
+      return auctionsData[auctionId].winner;
     }
 
     // calculate the winner
@@ -666,14 +729,9 @@ contract Auctions is Delegate, Secured {
       }
     }
 
-
-    // calculate the fee
+    // transfer everything from the winner to the owner account
     uint winningBid = auctions[auctionId][winner];
-    uint calculatedFee = funds.calculateFee(bid);
-
-    // transfer that fee from the winner's reserve to our balance
-    //
-    // the reserved funds need to be transferred away from the winner into a company wallet,
+    funds.transferReserve(winningBid, winner);
   }
 
   // todo: we need some kind of confirmation function that checks a customer if their item has been delivered, then checks the batch that item was in
@@ -716,7 +774,7 @@ contract Auctions is Delegate, Secured {
   // ---
 
   // Allow part of auction to be payed out to provider
-  function payoutPart (uint auctionId) restrictToPermitted {
+  function payoutPart (uint auctionId) restrictToPermitted public {
     Auction memory auc = auctionsData[auctionId];
     if (auc.itemCount > auc.partsPayed) {
       // get the winning bid
@@ -727,15 +785,28 @@ contract Auctions is Delegate, Secured {
       // calculate the part
       uint part = total / auc.itemCount;
       // pay that amount to the provider from the owner account
-      funds.transferOwnerFunds(part, auc.winner)
+      funds.transferOwnerFunds(part, auc.winner);
       // update the auction data
       auctionsData[auctionId].partsPayed += 1;
+
+      // repay the deposit if this was the last part
+      if (auctionsData[auctionId].itemCount == auctionsData[auctionId].partsPayed) {
+        refund(auctionId);
+      }
     } else {
       revert();
     }
     //   auctionsData[auctionId]
     // the amount to be payed to the provider is the winning bid - our fee divided by the item count in the auction
     // we can check itemCount vs partsPayed to see if everything has been paid
+  }
+
+  // Allow full deposit to be payed back to provider
+  function refund (uint auctionId) restrictToPermitted public {
+    // get the winning bid, this was originally deposited as escrow / downpayment
+    uint winningBid = auctions[auctionId][auc.winner];
+    // pay that amount to the provider from the owner account
+    funds.transferOwnerFunds(winningBid, auc.winner);
   }
 
   // instead of refunding all providers (besides the winner) in a list / loop at contract end, make providers withdraw their own refunds,
@@ -822,17 +893,29 @@ contract Users is Delegate {
 
   // Add an address to administrators
   function addAdministrator (address addr) restrictToCreators public {
-    administrators[addr] = true;
+    if (addr != address(0)) {
+      administrators[addr] = true;
+    } else {
+      revert();
+    }
   }
 
   // Add an address to providers
   function addProvider (address addr) restrictToCreators public {
-    providers[addr] = true;
+    if (addr != address(0)) {
+      providers[addr] = true;
+    } else {
+      revert();
+    }
   }
 
   // Add an address to customers
   function addCustomer (address addr) restrictToCreators public {
-    customers[addr] = true;
+    if (addr != address(0)) {
+      customers[addr] = true;
+    } else {
+      revert();
+    }
   }
 
 
@@ -889,15 +972,15 @@ contract Factory is Owned {
     // Create the funds contract, reference us and the factory as owners, reference the users contract for access management
     funds = new Funds(msg.sender, users);
 
-    // Create the items contract, reference us and the factory as owners
-    // Reference the users contract for access management
-    // Reference the funds contract for fund management
-    items = new Items(msg.sender, users, funds);
-
     // Create the auctions contract, reference us and the factory as owners
     // Reference the users contract for access management
     // Reference the funds contract for fund management
     auctions = new Auctions(msg.sender, users, funds);
+
+    // Create the items contract, reference us and the factory as owners
+    // Reference the users contract for access management
+    // Reference the funds contract for fund management
+    items = new Items(msg.sender, users, funds, auctions);
 
     // Add Funds, Items and Auctions to the permitted callers of the Users contract
     users.addPermittedCaller(funds);
@@ -919,23 +1002,31 @@ contract Factory is Owned {
 
   // Update the users contract reference for the linked contracts
   function updateUsersReference (address newAddr) restrictToOwner public {
-    // Update the local reference and pointer
-    users = new Users(newAddr);
+    if (newAddr != address(0)) {
+      // Update the local reference and pointer
+      users = new Users(newAddr);
 
-    // Update the individual contract's references
-    funds.updateUsersContractReference(users);
-    items.updateUsersContractReference(users);
-    auctions.updateUsersContractReference(users);
+      // Update the individual contract's references
+      funds.updateUsersContractReference(users);
+      items.updateUsersContractReference(users);
+      auctions.updateUsersContractReference(users);
+    } else {
+      revert();
+    }
   }
 
   // Update the funds contract reference for the linked contracts
   function updateFundsReference (address newAddr) restrictToOwner public {
-    // Update the local reference and pointer
-    funds = new Funds(newAddr, users);
+    if (newAddr != address(0)) {
+      // Update the local reference and pointer
+      funds = new Funds(newAddr, users);
 
-    // Update the individual contract's references
-    items.updateFundsContractReference(funds);
-    auctions.updateFundsContractReference(funds);
+      // Update the individual contract's references
+      items.updateFundsContractReference(funds);
+      auctions.updateFundsContractReference(funds);
+    } else {
+      revert();
+    }
   }
 
   function getUsersReference() view restrictToOwner public returns (Users) {

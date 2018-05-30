@@ -35,15 +35,15 @@ contract Factory is Owned {
     // Create the funds contract, reference us and the factory as owners, reference the users contract for access management
     funds = new Funds(msg.sender, users);
 
-    // Create the items contract, reference us and the factory as owners
-    // Reference the users contract for access management
-    // Reference the funds contract for fund management
-    items = new Items(msg.sender, users, funds);
-
     // Create the auctions contract, reference us and the factory as owners
     // Reference the users contract for access management
     // Reference the funds contract for fund management
     auctions = new Auctions(msg.sender, users, funds);
+
+    // Create the items contract, reference us and the factory as owners
+    // Reference the users contract for access management
+    // Reference the funds contract for fund management
+    items = new Items(msg.sender, users, funds, auctions);
 
     // Add Funds, Items and Auctions to the permitted callers of the Users contract
     users.addPermittedCaller(funds);
@@ -53,6 +53,9 @@ contract Factory is Owned {
     // Add Items and Auctions to the permitted callers of the Funds contract
     funds.addPermittedCaller(items);
     funds.addPermittedCaller(auctions);
+
+    // Add Items to the permitted callers of the Auctions contract
+    auctions.addPermittedCaller(items);
   }
 
 
@@ -62,23 +65,31 @@ contract Factory is Owned {
 
   // Update the users contract reference for the linked contracts
   function updateUsersReference (address newAddr) restrictToOwner public {
-    // Update the local reference and pointer
-    users = new Users(newAddr);
+    if (newAddr != address(0)) {
+      // Update the local reference and pointer
+      users = new Users(newAddr);
 
-    // Update the individual contract's references
-    funds.updateUsersContractReference(users);
-    items.updateUsersContractReference(users);
-    auctions.updateUsersContractReference(users);
+      // Update the individual contract's references
+      funds.updateUsersContractReference(users);
+      items.updateUsersContractReference(users);
+      auctions.updateUsersContractReference(users);
+    } else {
+      revert();
+    }
   }
 
   // Update the funds contract reference for the linked contracts
   function updateFundsReference (address newAddr) restrictToOwner public {
-    // Update the local reference and pointer
-    funds = new Funds(newAddr, users);
+    if (newAddr != address(0)) {
+      // Update the local reference and pointer
+      funds = new Funds(newAddr, users);
 
-    // Update the individual contract's references
-    items.updateFundsContractReference(funds);
-    auctions.updateFundsContractReference(funds);
+      // Update the individual contract's references
+      items.updateFundsContractReference(funds);
+      auctions.updateFundsContractReference(funds);
+    } else {
+      revert();
+    }
   }
 
   function getUsersReference() view restrictToOwner public returns (Users) {
@@ -101,7 +112,5 @@ contract Factory is Owned {
   // Service functions
   // ---
 
-  function testCall () restrictToOwner public {
-    auctions.test(5);
-  }
+
 }

@@ -32,9 +32,13 @@ contract Delegate is FactoryOwned {
   mapping (address => bool) permittedCallers;
 
   constructor (address origin) public FactoryOwned(origin) {
-    // Add the origin and caller as permitted callers
-    addPermittedCaller(msg.sender);
-    addPermittedCaller(origin);
+    if (origin != address(0)) {
+      // Add the origin and caller as permitted callers
+      addPermittedCaller(msg.sender);
+      addPermittedCaller(origin);
+    } else {
+      revert();
+    }
   }
 
   // ---
@@ -43,11 +47,20 @@ contract Delegate is FactoryOwned {
 
   // Add an address as a permitted caller
   function addPermittedCaller (address addr) restrictToCreators public {
-    permittedCallers[addr] = true;
+    if (addr != address(0)) {
+      permittedCallers[addr] = true;
+    } else {
+      revert();
+    }
   }
 
   // Remove an address from permitted callers
   function removePermittedCaller (address addr) restrictToCreators public {
-    permittedCallers[addr] = false;
+    if (addr != address(0)) {
+      permittedCallers[addr] = false;
+    } else {
+      revert();
+    }
   }
 }
+

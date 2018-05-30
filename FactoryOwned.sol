@@ -1,5 +1,7 @@
 pragma solidity ^0.4.18;
 
+import "./Owned.sol";
+
 /**
  * Intended to be extended by other contracts, specifically the Delegate contract
  *
@@ -44,7 +46,11 @@ contract FactoryOwned is Owned {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateFactory (address addr) restrictToCreators public {
-    factory = addr;
+    if (addr != address(0)) {
+      factory = addr;
+    } else {
+      revert();
+    }
   }
 
 }

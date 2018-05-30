@@ -21,7 +21,11 @@ contract Owned {
   address public owner;
 
   constructor (address addr) public {
-    owner = addr;
+    if (addr != address(0)) {
+      owner = addr;
+    } else {
+      revert();
+    }
   }
 
 }

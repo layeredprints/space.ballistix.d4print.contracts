@@ -36,8 +36,6 @@ contract Funds is Delegate, Secured {
   // Direct Service functions (called by users directly)
   // ---
 
-  // todo: add fee payout / transfer function
-
   // Allow the owner to fill the contract buffer
   function fillBuffer (uint amount) isAdmin(msg.sender) public payable {
     // Check if the owner is filling how much they say they are
@@ -164,7 +162,7 @@ contract Funds is Delegate, Secured {
   }
 
   // Calculate the fee
-  function calculateFee (uint amount) restrictToPermitted public {
+  function calculateFee (uint amount) view restrictToPermitted public returns (uint) {
     if (amount > 0) {
       return (amount / 100) * fee;
     } else {
@@ -180,9 +178,37 @@ contract Funds is Delegate, Secured {
       // Subtract the amount from the reservations of the source
       reservations[source] -= amount;
       // Add that amount to the balance of the destination
-      balance[destination] += amount;
+      balances[destination] += amount;
     } else {
       // If failed, revert
+      revert();
+    }
+  }
+
+  // Allow admin to transfer reserves
+  // NOTE: this transfers from source RESERVE to owner BALANCE, not owner RESERVE
+  function transferReserve (uint amount, address source) restrictToPermitted public {
+    // Check if the source has that amount or more in reservations
+    if (reservations[source] >= amount) {
+      // Subtract the amount from the reservations of the source
+      reservations[source] -= amount;
+      // Add that amount to the balance of the destination
+      balances[owner] += amount;
+    } else {
+      // If failed, revert
+      revert();
+    }
+  }
+
+  // Allow admin to pay out from admin account
+  function transferOwnerFunds (uint amount, address destination) restrictToPermitted public {
+    // Check if the source has that amount or more in balance
+    if (balances[owner] >= amount) {
+      // Subtract the amount from the balance of the owner
+      balances[owner] -= amount;
+      // Add that amount to the balance of the destination
+      balances[destination] += amount;
+    } else {
       revert();
     }
   }

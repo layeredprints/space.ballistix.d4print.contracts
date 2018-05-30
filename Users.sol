@@ -76,17 +76,29 @@ contract Users is Delegate {
 
   // Add an address to administrators
   function addAdministrator (address addr) restrictToCreators public {
-    administrators[addr] = true;
+    if (addr != address(0)) {
+      administrators[addr] = true;
+    } else {
+      revert();
+    }
   }
 
   // Add an address to providers
   function addProvider (address addr) restrictToCreators public {
-    providers[addr] = true;
+    if (addr != address(0)) {
+      providers[addr] = true;
+    } else {
+      revert();
+    }
   }
 
   // Add an address to customers
   function addCustomer (address addr) restrictToCreators public {
-    customers[addr] = true;
+    if (addr != address(0)) {
+      customers[addr] = true;
+    } else {
+      revert();
+    }
   }
 
 

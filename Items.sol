@@ -15,14 +15,32 @@ import "./Funds.sol";
 
 contract Items is Delegate, Secured {
 
+  struct Item {
+    uint id;
+    // note: if we keep the price and auction id here, we could transfer the price by ourselves
+    string hash;
+    uint categoryId;
+    bool confirmed;
+  }
+
   // Reference to the funds contract
   Funds public funds;
 
-  // Mapping for the balance of each account within the Funds wallet
+  // Reference to the auctions contract
+  Auctions public auctions;
+
+  // Mapping of user's item id lists
   mapping (address => uint[]) items;
 
-  constructor (address origin, address usersContractAddres, address fundsContractAddress) public Delegate(origin) Secured(usersContractAddres) {
+  // Mapping of user's item struct lists
+  mapping (address => Item[]) itemStructs;
+
+  // Map users to the indexes of their items
+  mapping (address => mapping (uint => uint)) itemReferences;
+
+  constructor (address origin, address usersContractAddres, address fundsContractAddress, address auctionsContractAddress) public Delegate(origin) Secured(usersContractAddres) {
     updateFundsContractReference(fundsContractAddress);
+    updateAuctionsContractReference(auctionsContractAddress);
   }
 
 
@@ -30,23 +48,68 @@ contract Items is Delegate, Secured {
   // Contract functions
   // ---
 
-  // Allow for updating the owning (factory) contract, since it may change
+  // Allow for updating the funds contract reference, since it may change
   function updateFundsContractReference (address addr) restrict public {
-    funds = Funds (addr);
+    if (addr != address(0)) {
+      funds = Funds (addr);
+    } else {
+      revert();
+    }
   }
 
+  // Allow for updating the auctions contract reference, since it may change
+  function updateAuctionsContractReference (address addr) restrict public {
+    if (addr != address(0)) {
+      auctions = Auctions (addr);
+    } else {
+      revert();
+    }
+  }
 
-  // ---
+  // --
   // Service functions
   // ---
 
-  // Allow user to order an item, which reserves those funds if they have them
-  // Otherwise fail the function
-  function order (uint price, uint itemId) isCustomer(msg.sender) public {
-    // Reserve the funds
-    funds.reserve(price, msg.sender); // be wary of the msg.sender change when executing these calls
-    // Add the item to that user's list of items
+  // Allow user to order an item, reserves those funds (fails if they don't have them)
+  function order (uint price, uint itemId, uint categoryId, string hash) isCustomer(msg.sender) public {
+    funds.reserve(price, msg.sender);
+    Item memory item = Item ({
+      id: itemId,
+      categoryId: categoryId,
+      hash: hash,
+      confirmed: false
+      });
     items[msg.sender].push(itemId);
+    uint newLength = itemStructs[msg.sender].push(item);
+    // keep track of the item indices within the user's item lists for easy acces later
+    itemReferences[msg.sender][itemId] = newLength - 1;
+  }
+
+  // Allow user to get filehash for item
+  function getItemFileHash (uint itemId) view isCustomer(msg.sender) public returns (string) {
+    uint itemIndex = itemReferences[msg.sender][itemId];
+    return itemStructs[msg.sender][itemIndex].hash;
+  }
+
+  // Allow user to get category for item
+  function getItemCategory (uint itemId) view isCustomer(msg.sender) public returns (uint) {
+    uint itemIndex = itemReferences[msg.sender][itemId];
+    return itemStructs[msg.sender][itemIndex].categoryId;
+  }
+
+  // Allow user to get confirmation status for item
+  function getItemStatus (uint itemId) view isCustomer(msg.sender) public returns (bool) {
+    uint itemIndex = itemReferences[msg.sender][itemId];
+    return itemStructs[msg.sender][itemIndex].confirmed;
+  }
+
+  // Allow user to confirm item
+  function confirmItem (uint itemId, uint auctionId) isCustomer(msg.sender) public {
+    uint itemIndex = itemReferences[msg.sender][itemId];
+    itemStructs[msg.sender][itemIndex].confirmed = true;
+    auctions.payoutPart(auctionId);
+    // todo: this should trigger some event or action that transfers
+    // a percentage of the batch cost to the provider that ... provided it
   }
 
   // Get the items queued for the requesting user

@@ -15,12 +15,20 @@ import "./Delegate.sol";
 
 contract Auctions is Delegate, Secured {
 
+  struct Auction {
+    uint id;
+    uint itemCount; // we can pay out the provider in increments based on this
+    address winner;
+    uint partsPayed;
+  }
+
   // Reference to the funds contract
   Funds public funds;
 
   // Mapping of existant auctions (we don't want to keep their data here, just identifier and bids)
   // First key (uint) is the auction id, second mapping is on a provider address (key) to bid amount (value)
   mapping (uint => mapping (address => uint)) public auctions;
+  mapping (uint => Auction) public auctionsData;
 
   // Keep track of which auctions are ongoing
   mapping (uint => bool) public ongoing;
@@ -44,7 +52,11 @@ contract Auctions is Delegate, Secured {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateFundsContractReference (address addr) restrict public {
-    funds = Funds (addr);
+    if (addr != address(0)) {
+      funds = Funds (addr);
+    } else {
+      revert();
+    }
   }
 
 
@@ -53,8 +65,15 @@ contract Auctions is Delegate, Secured {
   // ---
 
   // Allow administrators to start an auction
-  function addAuction (uint auctionId) isAdmin(msg.sender) public {
+  function addAuction (uint auctionId, uint itemCount) isAdmin(msg.sender) public {
     ongoing[auctionId] = true;
+    Auction memory auc = Auction ({
+      id: auctionId,
+      itemCount: itemCount,
+      winner: address(0),
+      partsPayed: 0
+      });
+    auctionsData[auctionId] = auc;
   }
 
   // Allow administrators to end an auction todo: this does not perform the needed logic
@@ -64,7 +83,14 @@ contract Auctions is Delegate, Secured {
 
   // Allow admin to get winner for an auction
   // note: if this gets an auctionid that is invalid, it will likely return null, that's expected behaviour it think
-  function getWinner (uint auctionId) view isAdmin(msg.sender) public returns (address) {
+  function getWinner (uint auctionId) isAdmin(msg.sender) public returns (address) {
+
+    // return the winner if we already calculated it
+    if (auctionsData[auctionId].winner != address(0)) {
+      return auctionsData[auctionId].winner;
+    }
+
+    // calculate the winner
     address winner;
     uint largestBid = 0;
     // get the bidcount
@@ -80,6 +106,9 @@ contract Auctions is Delegate, Secured {
         winner = participant;
       }
     }
+
+    // assign the winner
+    auctionsData[auctionId].winner = winner;
     return winner;
   }
 
@@ -88,6 +117,8 @@ contract Auctions is Delegate, Secured {
     // todo: keep the funds of the winner, take a fee on that and pay ourselves, they get the rest back (?)
     // todo: refund / unReserve the funds of the rest of the participants
     // Unreserve all the funds for this auction, except for the winner's
+    uint numberOfBids = bidCount[auctionId];
+
     for(uint i = 1; i <= numberOfBids; i++) {
       address participant = participants[auctionId][i];
       if (participant != winner) {
@@ -96,12 +127,9 @@ contract Auctions is Delegate, Secured {
       }
     }
 
-    // calculate the fee
-    uint bid = auctions[auctionId][winner];
-    uint fee = funds.calculateFee(bid);
-    // transfer that fee from the winner's reserve to our balance
-    //
-    // the reserved funds need to be transferred away from the winner into a company wallet,
+    // transfer everything from the winner to the owner account
+    uint winningBid = auctions[auctionId][winner];
+    funds.transferReserve(winningBid, winner);
   }
 
   // todo: we need some kind of confirmation function that checks a customer if their item has been delivered, then checks the batch that item was in
@@ -137,6 +165,46 @@ contract Auctions is Delegate, Secured {
     } else {
       revert();
     }
+  }
+
+  // ---
+  // Delegate Service functions (called by trused contracts and admins)
+  // ---
+
+  // Allow part of auction to be payed out to provider
+  function payoutPart (uint auctionId) restrictToPermitted public {
+    Auction memory auc = auctionsData[auctionId];
+    if (auc.itemCount > auc.partsPayed) {
+      // get the winning bid
+      uint winningBid = auctions[auctionId][auc.winner];
+      // subtract the fee
+      uint fee = funds.calculateFee(winningBid);
+      uint total = winningBid - fee;
+      // calculate the part
+      uint part = total / auc.itemCount;
+      // pay that amount to the provider from the owner account
+      funds.transferOwnerFunds(part, auc.winner);
+      // update the auction data
+      auctionsData[auctionId].partsPayed += 1;
+
+      // repay the deposit if this was the last part
+      if (auctionsData[auctionId].itemCount == auctionsData[auctionId].partsPayed) {
+        refund(auctionId);
+      }
+    } else {
+      revert();
+    }
+    //   auctionsData[auctionId]
+    // the amount to be payed to the provider is the winning bid - our fee divided by the item count in the auction
+    // we can check itemCount vs partsPayed to see if everything has been paid
+  }
+
+  // Allow full deposit to be payed back to provider
+  function refund (uint auctionId) restrictToPermitted public {
+    // get the winning bid, this was originally deposited as escrow / downpayment
+    uint winningBid = auctions[auctionId][auc.winner];
+    // pay that amount to the provider from the owner account
+    funds.transferOwnerFunds(winningBid, auc.winner);
   }
 
   // instead of refunding all providers (besides the winner) in a list / loop at contract end, make providers withdraw their own refunds,

@@ -53,9 +53,14 @@ contract Secured {
   // Reference to the users contract
   Users public users;
 
+  // Initialize the reference to the used contract and assign the caller as the origin
   constructor (address addr) public {
-    origin = msg.sender;
-    users = Users (addr);
+    if (addr != address(0)) {
+      origin = msg.sender;
+      users = Users (addr);
+    } else {
+      revert();
+    }
   }
 
 
@@ -65,6 +70,11 @@ contract Secured {
 
   // Allow for updating the owning (factory) contract, since it may change
   function updateUsersContractReference (address addr) restrict public {
-    users = Users (addr);
+    if (addr != address(0)) {
+      users = Users (addr);
+    } else {
+      revert();
+    }
   }
 }
+
