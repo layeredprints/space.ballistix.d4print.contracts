@@ -20,6 +20,7 @@ contract Auctions is Delegate, Secured {
     uint itemCount; // we can pay out the provider in increments based on this
     address winner;
     uint partsPayed;
+    bool finished;
   }
 
   // Reference to the funds contract
@@ -71,7 +72,8 @@ contract Auctions is Delegate, Secured {
       id: auctionId,
       itemCount: itemCount,
       winner: address(0),
-      partsPayed: 0
+      partsPayed: 0,
+      finished: false
       });
     auctionsData[auctionId] = auc;
   }
@@ -82,54 +84,53 @@ contract Auctions is Delegate, Secured {
   }
 
   // Allow admin to get winner for an auction
-  // note: if this gets an auctionid that is invalid, it will likely return null, that's expected behaviour it think
-  function getWinner (uint auctionId) isAdmin(msg.sender) public returns (address) {
-
-    // return the winner if we already calculated it
-    if (auctionsData[auctionId].winner != address(0)) {
-      return auctionsData[auctionId].winner;
-    }
-
-    // calculate the winner
-    address winner;
-    uint largestBid = 0;
-    // get the bidcount
-    uint numberOfBids = bidCount[auctionId];
-    // iterate the mapping
-    for(uint i = 1; i <= numberOfBids; i++) {
-      // get the participant address
-      address participant = participants[auctionId][i];
-      // get the value that participant bid
-      uint bid = auctions[auctionId][participant];
-      if (bid > largestBid) {
-        largestBid = bid;
-        winner = participant;
-      }
-    }
-
-    // assign the winner
-    auctionsData[auctionId].winner = winner;
-    return winner;
+  function getWinner (uint auctionId) view isAdmin(msg.sender) public returns (address) {
+    return auctionsData[auctionId].winner;
   }
 
   // Allow admin to finish up auction with the calculated winner
-  function finishAuction (uint auctionId, address winner) isAdmin(msg.sender) public {
-    // todo: keep the funds of the winner, take a fee on that and pay ourselves, they get the rest back (?)
-    // todo: refund / unReserve the funds of the rest of the participants
-    // Unreserve all the funds for this auction, except for the winner's
-    uint numberOfBids = bidCount[auctionId];
-
-    for(uint i = 1; i <= numberOfBids; i++) {
-      address participant = participants[auctionId][i];
-      if (participant != winner) {
+  function finishAuction (uint auctionId) isAdmin(msg.sender) public {
+    if (ongoing[auctionId] && !auctionsData[auctionId].finished) {
+      // calculate the winner
+      address winner;
+      uint largestBid = 0;
+      // get the bidcount
+      uint numberOfBids = bidCount[auctionId];
+      // iterate the mapping
+      for(uint i = 1; i <= numberOfBids; i++) {
+        // get the participant address
+        address participant = participants[auctionId][i];
+        // get the value that participant bid
         uint bid = auctions[auctionId][participant];
-        funds.unReserve(bid, participant);
+        if (bid > largestBid) {
+          largestBid = bid;
+          winner = participant;
+        }
       }
-    }
 
-    // transfer everything from the winner to the owner account
-    uint winningBid = auctions[auctionId][winner];
-    funds.transferReserve(winningBid, winner);
+      // assign the winner
+      auctionsData[auctionId].winner = winner;
+
+      // Unreserve all the funds for this auction, except for the winner's
+      uint numberOfBids = bidCount[auctionId];
+      for(uint i = 1; i <= numberOfBids; i++) {
+        address participant = participants[auctionId][i];
+        if (participant != winner) {
+          uint bid = auctions[auctionId][participant];
+          funds.unReserve(bid, participant);
+        }
+      }
+
+      // transfer everything from the winner to the owner account as deposit
+      uint winningBid = auctions[auctionId][winner];
+      funds.transferReserve(winningBid, winner);
+
+      // set auction to done / not ongoing
+      ongoing[auctionId] = false;
+      auctionsData[auctionId].finished = true;
+    } else {
+      revert();
+    }
   }
 
   // todo: we need some kind of confirmation function that checks a customer if their item has been delivered, then checks the batch that item was in
@@ -176,6 +177,7 @@ contract Auctions is Delegate, Secured {
     Auction memory auc = auctionsData[auctionId];
     if (auc.itemCount > auc.partsPayed) {
       // get the winning bid
+
       uint winningBid = auctions[auctionId][auc.winner];
       // subtract the fee
       uint fee = funds.calculateFee(winningBid);
