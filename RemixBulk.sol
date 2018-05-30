@@ -207,6 +207,7 @@ contract Secured {
   // Reference to the users contract
   Users public users;
 
+  // Initialize the reference to the used contract and assign the caller as the origin
   constructor (address addr) public {
     origin = msg.sender;
     users = Users (addr);
@@ -228,72 +229,6 @@ contract Secured {
 /*-------------------------------------------------------------------------------*/
 
 // debug and testing stuff
-
-contract Referencee {
-
-}
-
-contract Referencer {
-
-  Referencee public referencee;
-
-  address public referenceeContract;
-
-  constructor (address addr) public {
-    referenceeContract = addr;
-    referencee = Referencee (referenceeContract);
-  }
-}
-
-contract TestModifiers {
-
-  modifier isFalse {
-    if (false) _;
-    else revert();
-  }
-
-  modifier isTrue {
-    if (true) _;
-    else revert();
-  }
-
-  uint public zehVar;
-
-  function foo (uint nuVar) isFalse isTrue public {
-    zehVar = nuVar;
-  }
-
-}
-
-contract Test is FactoryOwned {
-
-  uint someVar;
-
-  constructor (address origin) public FactoryOwned(origin) {
-    // do other stuff
-  }
-
-  function foo (uint varVal) restrictToCreators public {
-    // do ya thing
-    someVar = varVal;
-  }
-
-}
-
-contract Test2 is Delegate {
-
-  uint someVar;
-
-  constructor (address origin) public Delegate(origin) {
-    // do other stuff
-  }
-
-  function foo (uint varVal) restrictToCreators public {
-    // do ya thing
-    someVar = varVal;
-  }
-
-}
 
 /*-------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------*/
@@ -331,8 +266,6 @@ contract Funds is Delegate, Secured {
   // ---
   // Direct Service functions (called by users directly)
   // ---
-
-  // todo: add fee payout / transfer function
 
   // Allow the owner to fill the contract buffer
   function fillBuffer (uint amount) isAdmin(msg.sender) public payable {
@@ -460,7 +393,7 @@ contract Funds is Delegate, Secured {
   }
 
   // Calculate the fee
-  function calculateFee (uint amount) restrictToPermitted public {
+  function calculateFee (uint amount) view restrictToPermitted public returns (uint) {
     if (amount > 0) {
       return (amount / 100) * fee;
     } else {
@@ -476,9 +409,22 @@ contract Funds is Delegate, Secured {
       // Subtract the amount from the reservations of the source
       reservations[source] -= amount;
       // Add that amount to the balance of the destination
-      balance[destination] += amount;
+      balances[destination] += amount;
     } else {
       // If failed, revert
+      revert();
+    }
+  }
+
+  // Allow admin to pay out from admin account
+  function transferOwnerFunds (uint amount, address destination) restrictToPermitted public {
+    // Check if the source has that amount or more in balance
+    if (balances[owner] >= amount) {
+      // Subtract the amount from the balance of the owner
+      balances[owner] -= amount;
+      // Add that amount to the balance of the destination
+      balances[destination] += amount;
+    } else {
       revert();
     }
   }
@@ -504,11 +450,25 @@ contract Funds is Delegate, Secured {
 
 contract Items is Delegate, Secured {
 
+  struct Item {
+    uint id;
+    // note: if we keep the price and auction id here, we could transfer the price by ourselves
+    string hash;
+    uint categoryId;
+    bool confirmed;
+  }
+
   // Reference to the funds contract
   Funds public funds;
 
-  // Mapping for the balance of each account within the Funds wallet
+  // Mapping of user's item id lists
   mapping (address => uint[]) items;
+
+  // Mapping of user's item struct lists
+  mapping (address => Item[]) itemStructs;
+
+  // Map users to the indexes of their items
+  mapping (address => mapping (uint => uint)) itemReferences;
 
   constructor (address origin, address usersContractAddres, address fundsContractAddress) public Delegate(origin) Secured(usersContractAddres) {
     updateFundsContractReference(fundsContractAddress);
@@ -525,17 +485,50 @@ contract Items is Delegate, Secured {
   }
 
 
-  // ---
+  // --
   // Service functions
   // ---
 
-  // Allow user to order an item, which reserves those funds if they have them
-  // Otherwise fail the function
-  function order (uint price, uint itemId) isCustomer(msg.sender) public {
-    // Reserve the funds
-    funds.reserve(price, msg.sender); // be wary of the msg.sender change when executing these calls
-    // Add the item to that user's list of items
+  // Allow user to order an item, reserves those funds (fails if they don't have them)
+  function order (uint price, uint itemId, uint categoryId, string hash) isCustomer(msg.sender) public {
+    funds.reserve(price, msg.sender);
+    Item memory item = Item ({
+      id: itemId,
+      categoryId: categoryId,
+      hash: hash,
+      confirmed: false
+      });
     items[msg.sender].push(itemId);
+    uint newLength = itemStructs[msg.sender].push(item);
+    // keep track of the item indices within the user's item lists for easy acces later
+    itemReferences[msg.sender][itemId] = newLength - 1;
+  }
+
+  // Allow user to get filehash for item
+  function getItemFileHash (uint itemId) view isCustomer(msg.sender) public returns (string) {
+    uint itemIndex = itemReferences[msg.sender][itemId];
+    return itemStructs[msg.sender][itemIndex].hash;
+  }
+
+  // Allow user to get category for item
+  function getItemCategory (uint itemId) view isCustomer(msg.sender) public returns (uint) {
+    uint itemIndex = itemReferences[msg.sender][itemId];
+    return itemStructs[msg.sender][itemIndex].categoryId;
+  }
+
+  // Allow user to get confirmation status for item
+  function getItemStatus (uint itemId) view isCustomer(msg.sender) public returns (bool) {
+    uint itemIndex = itemReferences[msg.sender][itemId];
+    return itemStructs[msg.sender][itemIndex].confirmed;
+  }
+
+  // Allow user to confirm item
+  function confirmItem (uint itemId, uint auctionId) isCustomer(msg.sender) public {
+    uint itemIndex itemReferences[msg.sender][itemId];
+    itemStructs[msg.sender][itemIndex].confirmed = true;
+    //   funds.payoutPart(auctionId);
+    // todo: this should trigger some event or action that transfers
+    // a percentage of the batch cost to the provider that ... provided it
   }
 
   // Get the items queued for the requesting user
@@ -565,12 +558,20 @@ contract Items is Delegate, Secured {
 
 contract Auctions is Delegate, Secured {
 
+  struct Auction {
+    uint id;
+    uint itemCount; // we can pay out the provider in increments based on this
+    address winner;
+    uint partsPayed;
+  }
+
   // Reference to the funds contract
   Funds public funds;
 
   // Mapping of existant auctions (we don't want to keep their data here, just identifier and bids)
   // First key (uint) is the auction id, second mapping is on a provider address (key) to bid amount (value)
   mapping (uint => mapping (address => uint)) public auctions;
+  mapping (uint => Auction) public auctionsData;
 
   // Keep track of which auctions are ongoing
   mapping (uint => bool) public ongoing;
@@ -603,8 +604,15 @@ contract Auctions is Delegate, Secured {
   // ---
 
   // Allow administrators to start an auction
-  function addAuction (uint auctionId) isAdmin(msg.sender) public {
+  function addAuction (uint auctionId, uint itemCount) isAdmin(msg.sender) public {
     ongoing[auctionId] = true;
+    Auction memory auc ({
+  id: auctionId,
+  itemCount: itemCount,
+  winner: address(0),
+  partsPayed: 0;
+  });
+    auctionsData[auctionId].push(auction);
   }
 
   // Allow administrators to end an auction todo: this does not perform the needed logic
@@ -615,6 +623,13 @@ contract Auctions is Delegate, Secured {
   // Allow admin to get winner for an auction
   // note: if this gets an auctionid that is invalid, it will likely return null, that's expected behaviour it think
   function getWinner (uint auctionId) view isAdmin(msg.sender) public returns (address) {
+
+    // return the winner if we already calculated it
+    if (auctionsData[auctionIdn].winner != address(0)) {
+      return auctionsData[auctionIdn].winner;
+    }
+
+    // calculate the winner
     address winner;
     uint largestBid = 0;
     // get the bidcount
@@ -630,6 +645,9 @@ contract Auctions is Delegate, Secured {
         winner = participant;
       }
     }
+
+    // assign the winner
+    auctionsData[auctionId].winner = winner;
     return winner;
   }
 
@@ -638,6 +656,8 @@ contract Auctions is Delegate, Secured {
     // todo: keep the funds of the winner, take a fee on that and pay ourselves, they get the rest back (?)
     // todo: refund / unReserve the funds of the rest of the participants
     // Unreserve all the funds for this auction, except for the winner's
+    uint numberOfBids = bidCount[auctionId];
+
     for(uint i = 1; i <= numberOfBids; i++) {
       address participant = participants[auctionId][i];
       if (participant != winner) {
@@ -646,9 +666,11 @@ contract Auctions is Delegate, Secured {
       }
     }
 
+
     // calculate the fee
-    uint bid = auctions[auctionId][winner];
-    uint fee = funds.calculateFee(bid);
+    uint winningBid = auctions[auctionId][winner];
+    uint calculatedFee = funds.calculateFee(bid);
+
     // transfer that fee from the winner's reserve to our balance
     //
     // the reserved funds need to be transferred away from the winner into a company wallet,
@@ -687,6 +709,33 @@ contract Auctions is Delegate, Secured {
     } else {
       revert();
     }
+  }
+
+  // ---
+  // Delegate Service functions (called by trused contracts and admins)
+  // ---
+
+  // Allow part of auction to be payed out to provider
+  function payoutPart (uint auctionId) restrictToPermitted {
+    Auction memory auc = auctionsData[auctionId];
+    if (auc.itemCount > auc.partsPayed) {
+      // get the winning bid
+      uint winningBid = auctions[auctionId][auc.winner];
+      // subtract the fee
+      uint fee = funds.calculateFee(winningBid);
+      uint total = winningBid - fee;
+      // calculate the part
+      uint part = total / auc.itemCount;
+      // pay that amount to the provider from the owner account
+      funds.transferOwnerFunds(part, auc.winner)
+      // update the auction data
+      auctionsData[auctionId].partsPayed += 1;
+    } else {
+      revert();
+    }
+    //   auctionsData[auctionId]
+    // the amount to be payed to the provider is the winning bid - our fee divided by the item count in the auction
+    // we can check itemCount vs partsPayed to see if everything has been paid
   }
 
   // instead of refunding all providers (besides the winner) in a list / loop at contract end, make providers withdraw their own refunds,
@@ -858,6 +907,9 @@ contract Factory is Owned {
     // Add Items and Auctions to the permitted callers of the Funds contract
     funds.addPermittedCaller(items);
     funds.addPermittedCaller(auctions);
+
+    // Add Items to the permitted callers of the Auctions contract
+    auctions.addPermittedCaller(items);
   }
 
 
@@ -906,9 +958,7 @@ contract Factory is Owned {
   // Service functions
   // ---
 
-  function testCall () restrictToOwner public {
-    auctions.test(5);
-  }
+
 }
 
 /*-------------------------------------------------------------------------------*/
