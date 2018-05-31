@@ -48,16 +48,13 @@ contract Funds is Delegate, Secured {
     }
   }
 
+  event Deposit (address from, uint amount);
+
   // Allow users to deposit funds into their wallet
-  function deposit (uint amount) isCustomerOrProvider(msg.sender) public payable {
-    // Check if the user is paying how much they say they are
-    if (msg.value == amount) {
-      // Update the balance
-      balances[msg.sender] += amount;
-    } else {
-      // If failed, revert
-      revert();
-    }
+  function deposit () isCustomerOrProvider(msg.sender) public payable {
+    // Update the balance
+    balances[msg.sender] += msg.value;
+    emit Deposit(msg.sender, msg.value);
   }
 
   // Allow users to check their funds

@@ -3,6 +3,7 @@ pragma solidity ^0.4.18;
 import "./Delegate.sol";
 import "./Secured.sol";
 import "./Funds.sol";
+import "./Auctions.sol";
 
 /**
  * Items contract that manages the service items for all users

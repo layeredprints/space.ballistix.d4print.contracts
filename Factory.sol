@@ -27,41 +27,90 @@ contract Factory is Owned {
   Items private items;
   Auctions private auctions;
 
+  // todo: don't deploy contracts in constructor, have seperate deployers for the contracts and do them individually
 
   constructor() public Owned(msg.sender) {
-    // Create the users contract, reference us and the factory as owners
-    users = new Users(msg.sender);
+    // // Create the users contract, reference us and the factory as owners
+    // users = new Users(msg.sender);
 
-    // Create the funds contract, reference us and the factory as owners, reference the users contract for access management
-    funds = new Funds(msg.sender, users);
+    // // Create the funds contract, reference us and the factory as owners, reference the users contract for access management
+    // funds = new Funds(msg.sender, users);
 
-    // Create the auctions contract, reference us and the factory as owners
-    // Reference the users contract for access management
-    // Reference the funds contract for fund management
-    auctions = new Auctions(msg.sender, users, funds);
+    // // Create the auctions contract, reference us and the factory as owners
+    // // Reference the users contract for access management
+    // // Reference the funds contract for fund management
+    // auctions = new Auctions(msg.sender, users, funds);
 
-    // Create the items contract, reference us and the factory as owners
-    // Reference the users contract for access management
-    // Reference the funds contract for fund management
-    items = new Items(msg.sender, users, funds, auctions);
+    // // Create the items contract, reference us and the factory as owners
+    // // Reference the users contract for access management
+    // // Reference the funds contract for fund management
+    // items = new Items(msg.sender, users, funds, auctions);
 
-    // Add Funds, Items and Auctions to the permitted callers of the Users contract
-    users.addPermittedCaller(funds);
-    users.addPermittedCaller(items);
-    users.addPermittedCaller(auctions);
+    // // Add Funds, Items and Auctions to the permitted callers of the Users contract
+    // users.addPermittedCaller(funds);
+    // users.addPermittedCaller(items);
+    // users.addPermittedCaller(auctions);
 
-    // Add Items and Auctions to the permitted callers of the Funds contract
-    funds.addPermittedCaller(items);
-    funds.addPermittedCaller(auctions);
+    // // Add Items and Auctions to the permitted callers of the Funds contract
+    // funds.addPermittedCaller(items);
+    // funds.addPermittedCaller(auctions);
 
-    // Add Items to the permitted callers of the Auctions contract
-    auctions.addPermittedCaller(items);
+    // // Add Items to the permitted callers of the Auctions contract
+    // auctions.addPermittedCaller(items);
   }
 
 
   // ---
   // Contract functions
   // ---
+
+  function initUsersContract () restrictToOwner public {
+    if (users == address(0)) {
+      // Create the users contract, reference us and the factory as owners
+      users = new Users(msg.sender);
+    }
+  }
+
+  function initFundsContract () restrictToOwner public {
+    if (users != address(0) && funds == address(0)) {
+      // Create the funds contract, reference us and the factory as owners, reference the users contract for access management
+      funds = new Funds(msg.sender, users);
+    }
+  }
+
+  function initAuctionsContract () restrictToOwner public {
+    if (users != address(0) && funds != address(0) && auctions == address(0)) {
+      // Create the auctions contract, reference us and the factory as owners
+      // Reference the users contract for access management
+      // Reference the funds contract for fund management
+      auctions = new Auctions(msg.sender, users, funds);
+    }
+  }
+
+  function initItemsContract () restrictToOwner public {
+    if (users != address(0) && funds != address(0) && auctions != address(0) && items == address(0)) {
+      // Create the items contract, reference us and the factory as owners
+      // Reference the users contract for access management
+      // Reference the funds contract for fund management
+      items = new Items(msg.sender, users, funds, auctions);
+    }
+  }
+
+  function initPermittedCallers () restrictToOwner public {
+    if (users != address(0) && funds != address(0) && auctions != address(0) && items != address(0)) {
+      // Add Funds, Items and Auctions to the permitted callers of the Users contract
+      users.addPermittedCaller(funds);
+      users.addPermittedCaller(items);
+      users.addPermittedCaller(auctions);
+
+      // Add Items and Auctions to the permitted callers of the Funds contract
+      funds.addPermittedCaller(items);
+      funds.addPermittedCaller(auctions);
+
+      // Add Items to the permitted callers of the Auctions contract
+      auctions.addPermittedCaller(items);
+    }
+  }
 
   // Update the users contract reference for the linked contracts
   function updateUsersReference (address newAddr) restrictToOwner public {

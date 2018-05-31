@@ -62,5 +62,14 @@ contract Delegate is FactoryOwned {
       revert();
     }
   }
+
+  // Allow checking for a permitted caller
+  function isPermittedCaller (address addr) view restrictToCreators public returns (bool) {
+    if (addr != address(0)) {
+      return permittedCallers[addr];
+    } else {
+      revert();
+    }
+  }
 }
 
