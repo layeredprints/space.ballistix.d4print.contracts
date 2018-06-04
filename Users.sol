@@ -45,7 +45,8 @@ contract Users is Delegate {
   }
 
   // Check if the given user is an admin
-  function hasRoleAdmin (address addr) view restrictToPermitted public returns (bool) {
+//  function hasRoleAdmin (address addr) view restrictToPermitted public returns (bool) {
+  function otherHasRoleAdmin (address addr) view public returns (bool) {
     return administrators[addr];
   }
 
@@ -55,7 +56,8 @@ contract Users is Delegate {
   }
 
   // Check if the given user is a provider
-  function hasRoleProvider (address addr) view restrictToPermitted public returns (bool) {
+//  function hasRoleProvider (address addr) view restrictToPermitted public returns (bool) {
+  function otherHasRoleProvider (address addr) view public returns (bool) {
     return providers[addr];
   }
 
@@ -65,7 +67,8 @@ contract Users is Delegate {
   }
 
   // Check if the given user is a customer
-  function hasRoleCustomer (address addr) view restrictToPermitted public returns (bool) {
+//  function hasRoleCustomer (address addr) view restrictToPermitted public returns (bool) {
+  function otherHasRoleCustomer (address addr) view public returns (bool) {
     return customers[addr];
   }
 
@@ -75,7 +78,8 @@ contract Users is Delegate {
   // ---
 
   // Add an address to administrators
-  function addAdministrator (address addr) restrictToCreators public {
+//  function addAdministrator (address addr) restrictToCreators public {
+  function addAdministrator (address addr) public {
     if (addr != address(0)) {
       administrators[addr] = true;
     } else {
@@ -84,7 +88,8 @@ contract Users is Delegate {
   }
 
   // Add an address to providers
-  function addProvider (address addr) restrictToCreators public {
+//  function addProvider (address addr) restrictToCreators public {
+  function addProvider (address addr) public {
     if (addr != address(0)) {
       providers[addr] = true;
     } else {
@@ -93,7 +98,8 @@ contract Users is Delegate {
   }
 
   // Add an address to customers
-  function addCustomer (address addr) restrictToCreators public {
+//  function addCustomer (address addr) restrictToCreators public {
+  function addCustomer (address addr) public {
     if (addr != address(0)) {
       customers[addr] = true;
     } else {
@@ -107,17 +113,20 @@ contract Users is Delegate {
   // ---
 
   // Remove an address from administrators
-  function removeAdministrator (address addr) restrictToCreators public {
+//  function removeAdministrator (address addr) restrictToCreators public {
+  function removeAdministrator (address addr) public {
     administrators[addr] = false;
   }
 
   // Remove an address from providers
-  function removeProvider (address addr) restrictToCreators public {
+//  function removeProvider (address addr) restrictToCreators public {
+  function removeProvider (address addr) public {
     providers[addr] = false;
   }
 
   // Remove an address from customers
-  function removeCustomer (address addr) restrictToCreators public {
+//  function removeCustomer (address addr) restrictToCreators public {
+  function removeCustomer (address addr) public {
     customers[addr] = false;
   }
 }

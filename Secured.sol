@@ -29,22 +29,22 @@ contract Secured {
   }
 
   modifier isAdmin (address addr) {
-    if (users.hasRoleAdmin(addr)) _;
+    if (users.otherHasRoleAdmin(addr)) _;
     else revert();
   }
 
   modifier isProvider (address addr) {
-    if (users.hasRoleProvider(addr)) _;
+    if (users.otherHasRoleProvider(addr)) _;
     else revert();
   }
 
   modifier isCustomer (address addr) {
-    if (users.hasRoleCustomer(addr)) _;
+    if (users.otherHasRoleCustomer(addr)) _;
     else revert();
   }
 
   modifier isCustomerOrProvider (address addr) {
-    if (users.hasRoleCustomer(addr) || users.hasRoleProvider(addr)) _;
+    if (users.otherHasRoleCustomer(addr) || users.otherHasRoleProvider(addr)) _;
     else revert();
   }
 

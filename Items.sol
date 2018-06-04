@@ -50,7 +50,8 @@ contract Items is Delegate, Secured {
   // ---
 
   // Allow for updating the funds contract reference, since it may change
-  function updateFundsContractReference (address addr) restrict public {
+//  function updateFundsContractReference (address addr) restrict public {
+  function updateFundsContractReference (address addr) public {
     if (addr != address(0)) {
       funds = Funds (addr);
     } else {
@@ -59,7 +60,8 @@ contract Items is Delegate, Secured {
   }
 
   // Allow for updating the auctions contract reference, since it may change
-  function updateAuctionsContractReference (address addr) restrict public {
+//  function updateAuctionsContractReference (address addr) restrict public {
+  function updateAuctionsContractReference (address addr) public {
     if (addr != address(0)) {
       auctions = Auctions (addr);
     } else {
@@ -72,7 +74,8 @@ contract Items is Delegate, Secured {
   // ---
 
   // Allow user to order an item, reserves those funds (fails if they don't have them)
-  function order (uint price, uint itemId, uint categoryId, string hash) isCustomer(msg.sender) public {
+//  function order (uint price, uint itemId, uint categoryId, string hash) isCustomer(msg.sender) public {
+  function order (uint price, uint itemId, uint categoryId, string hash) public {
     funds.reserve(price, msg.sender);
     Item memory item = Item ({
       id: itemId,
@@ -87,25 +90,29 @@ contract Items is Delegate, Secured {
   }
 
   // Allow user to get filehash for item
-  function getItemFileHash (uint itemId) view isCustomer(msg.sender) public returns (string) {
+//  function getItemFileHash (uint itemId) view isCustomer(msg.sender) public returns (string) {
+  function getItemFileHash (uint itemId) view public returns (string) {
     uint itemIndex = itemReferences[msg.sender][itemId];
     return itemStructs[msg.sender][itemIndex].hash;
   }
 
   // Allow user to get category for item
-  function getItemCategory (uint itemId) view isCustomer(msg.sender) public returns (uint) {
+//  function getItemCategory (uint itemId) view isCustomer(msg.sender) public returns (uint) {
+  function getItemCategory (uint itemId) view public returns (uint) {
     uint itemIndex = itemReferences[msg.sender][itemId];
     return itemStructs[msg.sender][itemIndex].categoryId;
   }
 
   // Allow user to get confirmation status for item
-  function getItemStatus (uint itemId) view isCustomer(msg.sender) public returns (bool) {
+//  function getItemStatus (uint itemId) view isCustomer(msg.sender) public returns (bool) {
+  function getItemStatus (uint itemId) view public returns (bool) {
     uint itemIndex = itemReferences[msg.sender][itemId];
     return itemStructs[msg.sender][itemIndex].confirmed;
   }
 
   // Allow user to confirm item
-  function confirmItem (uint itemId, uint auctionId) isCustomer(msg.sender) public {
+//  function confirmItem (uint itemId, uint auctionId) isCustomer(msg.sender) public {
+  function confirmItem (uint itemId, uint auctionId) public {
     uint itemIndex = itemReferences[msg.sender][itemId];
     itemStructs[msg.sender][itemIndex].confirmed = true;
     auctions.payoutPart(auctionId);
@@ -119,7 +126,8 @@ contract Items is Delegate, Secured {
   }
 
   // Get the items queued for the given user, owner only
-  function getItems (address source) view isAdmin(msg.sender) public returns (uint[]) {
+//  function getItems (address source) view isAdmin(msg.sender) public returns (uint[]) {
+  function getItems (address source) view public returns (uint[]) {
     return items[source];
   }
 

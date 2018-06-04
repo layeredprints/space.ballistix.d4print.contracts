@@ -52,7 +52,8 @@ contract Auctions is Delegate, Secured {
   // ---
 
   // Allow for updating the owning (factory) contract, since it may change
-  function updateFundsContractReference (address addr) restrict public {
+//  function updateFundsContractReference (address addr) restrict public {
+  function updateFundsContractReference (address addr) public {
     if (addr != address(0)) {
       funds = Funds (addr);
     } else {
@@ -66,7 +67,8 @@ contract Auctions is Delegate, Secured {
   // ---
 
   // Allow administrators to start an auction
-  function addAuction (uint auctionId, uint itemCount) isAdmin(msg.sender) public {
+//  function addAuction (uint auctionId, uint itemCount) isAdmin(msg.sender) public {
+  function addAuction (uint auctionId, uint itemCount) public {
     ongoing[auctionId] = true;
     Auction memory auc = Auction ({
       id: auctionId,
@@ -79,17 +81,20 @@ contract Auctions is Delegate, Secured {
   }
 
   // Allow administrators to end an auction todo: this does not perform the needed logic
-  function endAuction (uint auctionId) isAdmin(msg.sender) public {
+//  function endAuction (uint auctionId) isAdmin(msg.sender) public {
+  function endAuction (uint auctionId) public {
     ongoing[auctionId] = false;
   }
 
   // Allow admin to get winner for an auction
-  function getWinner (uint auctionId) view isAdmin(msg.sender) public returns (address) {
+//  function getWinner (uint auctionId) view isAdmin(msg.sender) public returns (address) {
+  function getWinner (uint auctionId) view public returns (address) {
     return auctionsData[auctionId].winner;
   }
 
   // Allow admin to finish up auction with the calculated winner
-  function finishAuction (uint auctionId) isAdmin(msg.sender) public {
+//  function finishAuction (uint auctionId) isAdmin(msg.sender) public {
+  function finishAuction (uint auctionId) public {
     if (ongoing[auctionId] && auctionsData[auctionId].finished) {
       // Calculate the winner of this auction
       calculateWinner(auctionId);
@@ -143,7 +148,8 @@ contract Auctions is Delegate, Secured {
   // if the entire batch has been delivered, the provider should be paid (or pay them in percentage increments)
 
   // Allow providers to bid on ongoing auctions (replace their bid if they bid again, this has to re-reserve those funds)
-  function bid (uint auctionId, uint amount) isProvider(msg.sender) public {
+//  function bid (uint auctionId, uint amount) isProvider(msg.sender) public {
+  function bid (uint auctionId, uint amount) public {
     // Check if the auction is ongoing
     if (ongoing[auctionId]) {
       // If the amount is smaller than or equal to zero or the present amount, do nothing
@@ -179,7 +185,8 @@ contract Auctions is Delegate, Secured {
   // ---
 
   // Allow part of auction to be payed out to provider
-  function payoutPart (uint auctionId) restrictToPermitted public {
+//  function payoutPart (uint auctionId) restrictToPermitted public {
+  function payoutPart (uint auctionId) public {
     Auction memory auc = auctionsData[auctionId];
     if (auc.itemCount > auc.partsPayed) {
       // get the winning bid
@@ -208,7 +215,8 @@ contract Auctions is Delegate, Secured {
   }
 
   // Allow full deposit to be payed back to provider
-  function refund (uint auctionId) restrictToPermitted public {
+//  function refund (uint auctionId) restrictToPermitted public {
+  function refund (uint auctionId) public {
     Auction memory auc = auctionsData[auctionId];
     // get the winning bid, this was originally deposited as escrow / downpayment
     uint winningBid = auctions[auctionId][auc.winner];

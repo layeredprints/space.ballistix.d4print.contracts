@@ -46,7 +46,8 @@ contract Delegate is FactoryOwned {
   // ---
 
   // Add an address as a permitted caller
-  function addPermittedCaller (address addr) restrictToCreators public {
+//  function addPermittedCaller (address addr) restrictToCreators public {
+  function addPermittedCaller (address addr) public {
     if (addr != address(0)) {
       permittedCallers[addr] = true;
     } else {
@@ -55,7 +56,8 @@ contract Delegate is FactoryOwned {
   }
 
   // Remove an address from permitted callers
-  function removePermittedCaller (address addr) restrictToCreators public {
+//  function removePermittedCaller (address addr) restrictToCreators public {
+  function removePermittedCaller (address addr) public {
     if (addr != address(0)) {
       permittedCallers[addr] = false;
     } else {
@@ -64,7 +66,8 @@ contract Delegate is FactoryOwned {
   }
 
   // Allow checking for a permitted caller
-  function isPermittedCaller (address addr) view restrictToCreators public returns (bool) {
+//  function isPermittedCaller (address addr) view restrictToCreators public returns (bool) {
+  function isPermittedCaller (address addr) view public returns (bool) {
     if (addr != address(0)) {
       return permittedCallers[addr];
     } else {
