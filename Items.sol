@@ -39,6 +39,9 @@ contract Items is Delegate, Secured {
   // Map users to the indexes of their items
   mapping (address => mapping (uint => uint)) itemReferences;
 
+  // Mapping of existing items
+  mapping (address => mapping (uint => bool)) itemPresence;
+
   constructor (address origin, address usersContractAddres, address fundsContractAddress, address auctionsContractAddress) public Delegate(origin) Secured(usersContractAddres) {
     updateFundsContractReference(fundsContractAddress);
     updateAuctionsContractReference(auctionsContractAddress);
@@ -85,6 +88,7 @@ contract Items is Delegate, Secured {
       });
     items[msg.sender].push(itemId);
     uint newLength = itemStructs[msg.sender].push(item);
+    itemPresence[msg.sender][itemId] = true;
     // keep track of the item indices within the user's item lists for easy acces later
     itemReferences[msg.sender][itemId] = newLength - 1;
   }
@@ -113,11 +117,19 @@ contract Items is Delegate, Secured {
   // Allow user to confirm item
 //  function confirmItem (uint itemId, uint auctionId) isCustomer(msg.sender) public {
   function confirmItem (uint itemId, uint auctionId) public {
+    if (itemPresence[msg.sender][itemId]) {
+      uint itemIndex = itemReferences[msg.sender][itemId];
+      itemStructs[msg.sender][itemIndex].confirmed = true;
+//      auctions.payoutPart(auctionId); // this causes an error in the contract for god knows what reason, likely too expensive?
+    } else {
+      revert();
+    }
+  }
+
+  function cancelItem (uint itemId) public {
+    // todo: don't allow cancel after auction up
     uint itemIndex = itemReferences[msg.sender][itemId];
-    itemStructs[msg.sender][itemIndex].confirmed = true;
-    auctions.payoutPart(auctionId);
-    // todo: this should trigger some event or action that transfers
-    // a percentage of the batch cost to the provider that ... provided it
+    delete itemStructs[msg.sender][itemIndex];
   }
 
   // Get the items queued for the requesting user
