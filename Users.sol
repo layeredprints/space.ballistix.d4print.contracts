@@ -12,6 +12,24 @@ import "./Delegate.sol";
  **/
 
 contract Users is Delegate {
+  // Constants
+  bytes32 constant ROLE_USER = 'USER';
+  bytes32 constant ROLE_CUSTOMER = 'CUSTOMER';
+  bytes32 constant ROLE_PROVIDER = 'PROVIDER';
+  bytes32 constant ROLE_ADMIN = 'ADMIN';
+
+  // Struct
+  struct User {
+    address addr;
+    bytes32 role;
+  }
+
+  // Events
+  event UserPatch(address indexed _address);
+  event UserDestroy(address indexed _address);
+
+  // Mapping for user structs
+  mapping(address => User) public users;
 
   // Mapping for address admin role
   mapping (address => bool) administrators;
@@ -72,16 +90,37 @@ contract Users is Delegate {
     return customers[addr];
   }
 
+  function exists (address _address) view public returns (bool) {
+    return (administrators[_address] || providers[_address] || customers[_address]) && (users[_address].addr != address(0));
+  }
 
   // ---
   // Add functions
   // ---
+
+  // roles: USER, PROVIDER, CUSTOMER, ADMIN ?
+
+  function patch (address _address, bytes32 _role) public {
+    users[_address] = User({addr: _address, role: _role}) ;
+    if (_role == ROLE_USER) {
+      addCustomer(_address);
+    } else  if (_role == ROLE_CUSTOMER) {
+      addCustomer(_address);
+    } else  if (_role == ROLE_PROVIDER) {
+      addProvider(_address);
+    } else  if (_role == ROLE_ADMIN) {
+      addAdministrator(_address);
+    }
+    UserPatch(_address);
+  }
 
   // Add an address to administrators
 //  function addAdministrator (address addr) restrictToCreators public {
   function addAdministrator (address addr) public {
     if (addr != address(0)) {
       administrators[addr] = true;
+      users[addr] = User({addr: addr, role: ROLE_ADMIN});
+      UserPatch(addr);
     } else {
       revert();
     }
@@ -92,6 +131,8 @@ contract Users is Delegate {
   function addProvider (address addr) public {
     if (addr != address(0)) {
       providers[addr] = true;
+      users[addr] = User({addr: addr, role: ROLE_PROVIDER});
+      UserPatch(addr);
     } else {
       revert();
     }
@@ -102,6 +143,8 @@ contract Users is Delegate {
   function addCustomer (address addr) public {
     if (addr != address(0)) {
       customers[addr] = true;
+      users[addr] = User({addr: addr, role: ROLE_CUSTOMER});
+      UserPatch(addr);
     } else {
       revert();
     }
@@ -129,4 +172,55 @@ contract Users is Delegate {
   function removeCustomer (address addr) public {
     customers[addr] = false;
   }
+
+  function destroy (address _address) public {
+    require(exists(_address));
+    delete users[_address];
+    delete customers[_address];
+    delete providers[_address];
+    delete administrators[_address];
+    UserDestroy(_address);
+  }
+
+  function get (address _address) public constant returns(address, bytes32) {
+    require(exists(_address));
+    return (users[_address].addr, users[_address].role);
+  }
 }
+
+/*
+users contract
++import "./Mortal.sol";
++
++contract Users is Mortal {
++  struct User {
++    address addr;
++    bytes32 role;
++  }
++
++  mapping(address => User) public users;
++
++  event UserPatch(address indexed _address);
++  event UserDestroy(address indexed _address);
++
++  function exists (address _address) public constant returns (bool _exists) {
++    return (users[_address].addr != address(0));
++  }
++
++  function patch (address _address, bytes32 _role) restricted public {
++    users[_address] = User({addr: _address, role: _role}) ;
++    UserPatch(_address);
++  }
++
++  function destroy (address _address) restricted public {
++    require(exists(_address));
++    delete users[_address];
++    UserDestroy(_address);
++  }
++
++  function get (address _address) public constant returns(address, bytes32) {
++    require(exists(_address));
++    return (users[_address].addr, users[_address].role);
++  }
++}
+*/
