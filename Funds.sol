@@ -158,16 +158,16 @@ contract Funds is Delegate, Secured {
     }
   }
 
-  // Unreserve all funds
-//  function unReserve (address source) restrictToPermitted public {
-  function unReserve (address source) public {
-    // Get the total funds in reservations for the source
-    uint amount = reservations[source];
-    // Subtract the amount from the reservations of the source
-    reservations[source] -= amount;
-    // Add that amount to the balance of the source
-    balances[source] += amount;
-  }
+//  // Unreserve all funds
+////  function unReserve (address source) restrictToPermitted public {
+//  function unReserve (address source) public {
+//    // Get the total funds in reservations for the source
+//    uint amount = reservations[source];
+//    // Subtract the amount from the reservations of the source
+//    reservations[source] -= amount;
+//    // Add that amount to the balance of the source
+//    balances[source] += amount;
+//  }
 
   // Calculate the fee
 //  function calculateFee (uint amount) view restrictToPermitted public returns (uint) {
