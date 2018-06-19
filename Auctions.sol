@@ -166,11 +166,11 @@ contract Auctions is Delegate, Secured {
           auctions[auctionId][msg.sender] = amount;
         } else { // The new amount is smaller, unreserve the difference, update the bid
           uint difference = auctions[auctionId][msg.sender] - amount;
-//          funds.unReserve(difference, msg.sender);
+          funds.unReserve(difference, msg.sender);
           auctions[auctionId][msg.sender] = amount;
         }
       } else { // Simply reserve the bid amount, increment the total bid count and assign that address with that participant index
-//        funds.reserve(amount, msg.sender);
+        funds.reserve(amount, msg.sender);
         auctions[auctionId][msg.sender] = amount;
         bidCount[auctionId] += 1;
         participants[auctionId][bidCount[auctionId]] = msg.sender;
