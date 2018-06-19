@@ -40,6 +40,9 @@ contract Auctions is Delegate, Secured {
   // Keep track of participating providers per auction (also necessary for winner iteration :(( )
   mapping (uint => mapping (uint => address)) public participants;
 
+  // Keep track of ongoing bids per provider
+  mapping (address => uint) public bidTracking;
+
   // (keep track of which auctions are finished?)
 
   constructor (address origin, address usersContractAddres, address fundsContractAddress) public Delegate(origin) Secured(usersContractAddres) {
@@ -174,10 +177,15 @@ contract Auctions is Delegate, Secured {
         auctions[auctionId][msg.sender] = amount;
         bidCount[auctionId] += 1;
         participants[auctionId][bidCount[auctionId]] = msg.sender;
+        bidTracking[msg.sender] = bidTracking[msg.sender] + 1;
       }
     } else {
       revert();
     }
+  }
+
+  function getBidCount() view public returns (uint) {
+    return bidTracking[msg.sender];
   }
 
   // ---
