@@ -139,8 +139,8 @@ contract Items is Delegate, Secured {
 
   // Get the items queued for the given user, owner only
 //  function getItems (address source) view isAdmin(msg.sender) public returns (uint[]) {
-  function getItems (address source) view public returns (uint[]) {
-    return items[source];
-  }
+//  function getItems (address source) view public returns (uint[]) {
+//    return items[source];
+//  }
 
 }

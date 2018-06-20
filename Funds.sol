@@ -103,18 +103,18 @@ contract Funds is Delegate, Secured {
 
   // Allow admin to transfer funds between any wallets
 //  function transfer (uint amount, address source, address destination) isAdmin(msg.sender) public {
-  function transfer (uint amount, address source, address destination) public {
-    // Check if the source has that amount or more
-    if (balances[source] >= amount) {
-      // Subtract the amount from the balance of the source
-      balances[source] -= amount;
-      // Add the amount to the balance of the destination
-      balances[destination] += amount;
-    } else {
-      // If failed, revert
-      revert();
-    }
-  }
+//  function transfer (uint amount, address source, address destination) public {
+//    // Check if the source has that amount or more
+//    if (balances[source] >= amount) {
+//      // Subtract the amount from the balance of the source
+//      balances[source] -= amount;
+//      // Add the amount to the balance of the destination
+//      balances[destination] += amount;
+//    } else {
+//      // If failed, revert
+//      revert();
+//    }
+//  }
 
   // Allow admin to update the fee
 //  function updateFee (uint newFee) isAdmin(msg.sender) public {
@@ -182,18 +182,18 @@ contract Funds is Delegate, Secured {
   // Allow admin to transfer reserves
   // NOTE: this transfers from source RESERVE to destination BALANCE, not destination RESERVE
 //  function transferReserve (uint amount, address source, address destination) restrictToPermitted public {
-  function transferReserve (uint amount, address source, address destination) public {
-    // Check if the source has that amount or more in reservations
-    if (reservations[source] >= amount) {
-      // Subtract the amount from the reservations of the source
-      reservations[source] -= amount;
-      // Add that amount to the balance of the destination
-      balances[destination] += amount;
-    } else {
-      // If failed, revert
-      revert();
-    }
-  }
+//  function transferReserve (uint amount, address source, address destination) public {
+//    // Check if the source has that amount or more in reservations
+//    if (reservations[source] >= amount) {
+//      // Subtract the amount from the reservations of the source
+//      reservations[source] -= amount;
+//      // Add that amount to the balance of the destination
+//      balances[destination] += amount;
+//    } else {
+//      // If failed, revert
+//      revert();
+//    }
+//  }
 
   // Allow admin to transfer reserves
   // NOTE: this transfers from source RESERVE to owner BALANCE, not owner RESERVE
